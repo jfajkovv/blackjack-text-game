@@ -1,4 +1,4 @@
-from text_games.py import *
+from text_games import *
 
 
 class BJ_Card(Card):
