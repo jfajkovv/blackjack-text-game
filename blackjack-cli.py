@@ -12,9 +12,27 @@ class BJ_Hand(text_games.Hand):
 class BJ_Player(text_games.Player, BJ_Hand):
     '''Blackjack game player representation.'''
 
-    def __init__(self, name):
+    def __init__(self, name, money=1000):
         super().__init__(name)
         self.card_set = []
+        self.money = money
+        self.is_cashing_out = False
+
+    def bet(self):
+        bet_choice = None
+        while bet_choice not in ('p', 'a'):
+            bet_choice = input('[P]lace a bet or put [a]ll in.').lower()
+
+        if bet_choice == 'p':
+            bet = text_games.ask_int_in_range(
+                range_bottom=1,
+                range_top=self.money,
+                user_query=f'Put the money ({1}-{self.money}): $'
+            )
+        elif bet_choice == 'a':
+            bet = self.money
+        return bet
+
 
 class BJ_Dealer(text_games.Player, BJ_Hand):
     '''Casino house host representation.'''
@@ -27,22 +45,23 @@ class BJ_Dealer(text_games.Player, BJ_Hand):
 class BJ_Deck(text_games.Deck):
     '''Blackjack session total of cards.'''
 
+    @property
+    def amount(self):
+        a = 0
+        for card in self.card_set:
+            a += 1
+        return a
+
 
 class BJ_Game(object):
     '''Blackjack gameplay logic.'''
 
     def __init__(self):
-        the_player = BJ_Player(name='Player')
-        print(the_player)
-        print(the_player.name)
-        print(dir(the_player))
-        the_dealer = BJ_Dealer(name='Croupier')
-        print(the_dealer)
-        print(the_dealer.name)
-        print(dir(the_dealer))
-        cards_deck = BJ_Deck()
-        cards_deck.fill_in(stacks=2)
-        cards_deck.shuffle()
+        self.player = BJ_Player(name='Player')
+        self.dealer = BJ_Dealer(name='Croupier')
+        self.deck = BJ_Deck()
+        self.deck.fill_in(stacks=2)
+        self.deck.shuffle()
 
     def run(self):
         pass
