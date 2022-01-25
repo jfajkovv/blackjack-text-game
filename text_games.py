@@ -112,6 +112,7 @@ class Deck(Hand):
         from random import shuffle
 
         shuffle(self.card_set)
+        print('*shuffling cards*')
 
     def hand_out(self, hands, per_hand=1):
         if self.card_set:
