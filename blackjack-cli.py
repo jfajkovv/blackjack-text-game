@@ -20,27 +20,50 @@ class BJ_Player(text_games.Player, BJ_Hand):
 
     def is_broke(self):
         if not self.money:
+            print('You have no money left - you lose.')
             return True
 
-    def is_cashing_out(self):
-        return self.is_cashing_out
+    def cash_out(self):
+        choice = text_games.ask_yes_no(
+            user_query='Take cash and leave? (y/n): '
+        )
+
+        if choice == 'y':
+            self.is_cashing_out = True
 
     def place_a_bet(self):
+        print(self.money)
         bet_choice = None
-        while bet_choice not in ('p', 'a'):
-            bet_choice = input('[P]lace a bet or put [a]ll in.').lower()
+        while bet_choice not in ('c', 'a'):
+            bet_choice = input('[C]hoose amount or put [a]ll in.').lower()
 
-        if bet_choice == 'p':
+        if bet_choice == 'c':
+            MIN = 1
+            MAX = self.money
+
             bet_amount = text_games.ask_int_in_range(
-                range_bottom=1,
-                range_top=self.money,
-                user_query=f'Put the money ({1}-{self.money}): $'
+                range_bottom=MIN,
+                range_top=MAX,
+                user_query=f'Put the money ({MIN}-{MAX}): $'
             )
-            print('bet', bet_amount)
+            self.money -= bet_amount
         elif bet_choice == 'a':
             bet_amount = self.money
-            print('all in', bet_amount)
+            self.money = 0
         return bet_amount
+
+    def take_action(self):
+        choice = None
+        while choice not in ('p', 'c'):
+            print('[P]lace a bet or [c]ash out.')
+            choice = input('\t>>> ').lower()
+
+        if choice == 'p':
+            self.place_a_bet()
+        elif choice == 'c':
+            self.cash_out()
+        else:
+            print('err: something went wrong in BJ_Player: take_action() method')
 
 
 class BJ_Dealer(text_games.Player, BJ_Hand):
@@ -65,10 +88,13 @@ class BJ_Deck(text_games.Deck):
             a += 1
         return a
 
+    def time_to_shuffle(self):
+        if self.amount < 52:
+            return True
+
     def restore(self):
         if self.amount < 52:
-            for used_card in self.used_cards:
-                self.hand_out(hands=[self.card_set], per_hand=1)
+            self.transfer_all(given_set=self.used_cards, route=self.card_set)
             self.shuffle()
 
 
@@ -81,6 +107,7 @@ class BJ_Game(object):
         self.deck = BJ_Deck()
         self.deck.fill_in(stacks=2)
         self.deck.shuffle()
+        self.__bet_bank = 0
 
 
     def run(self):
@@ -89,10 +116,11 @@ class BJ_Game(object):
         while not self.player.is_broke() and not self.player.is_cashing_out:
             # TODO: Inspect if total deck cards are lower than 52,
             # and if so, restore the deck and shuffle it.
-            self.deck.restore()
+            if self.deck.time_to_shuffle():
+                self.deck.restore()
 
-            # TODO: Allow the player to place a bet.
-            self.player.place_a_bet()
+            # TODO: Allow the player to cash_out or place a bet.
+            self.player.take_action()
 
         # TODO: Deal both the player and croupier two initial cards.
 

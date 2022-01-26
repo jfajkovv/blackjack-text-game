@@ -76,8 +76,8 @@ class Hand(object):
         self.card_set.remove(a_card)
         other_hand.stack_on(single_card=a_card)
 
-    def transfer_all(self, route):
-        for card in self.card_set:
+    def transfer_all(self, given_set, route):
+        for card in given_set:
             self.give(a_card=card, other_hand=route)
 
     def clear(self):
