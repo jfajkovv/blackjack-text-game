@@ -1,3 +1,5 @@
+import time
+
 ####
 ###
 ### General utilities
@@ -112,7 +114,8 @@ class Deck(Hand):
         from random import shuffle
 
         shuffle(self.card_set)
-        print('*shuffling cards*')
+        print('*shuffling cards*...')
+        time.sleep(1)
 
     def hand_out(self, hands, per_hand=1):
         if self.card_set:
