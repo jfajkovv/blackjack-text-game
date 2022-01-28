@@ -4,9 +4,42 @@ import text_games
 class BJ_Card(text_games.Card):
     '''Regular blackjack game card.'''
 
+    @property
+    def value(self):
+        if self.is_face_up:
+            v = text_games.Deck.RANKS.index(self.rank) + 1
+            if v > 10:
+                v = 10
+        else:
+            v = None
+        return v
+
 
 class BJ_Hand(text_games.Hand):
     '''Collection of cards to do something with.'''
+
+    @property
+    def total(self):
+        for card in self.card_set:
+            if not card.value:
+                return None
+
+        t = 0
+        for card in self.card_set:
+            t += card.value
+
+        has_ace = False
+        for card in self.card_set:
+            if card.value == 0:
+                has_ace = True
+
+        if has_ace and t <= 21:
+            t += 10
+
+        return t
+
+    def is_busted(self):
+        return self.total > 21
 
 
 class BJ_Player(text_games.Player, BJ_Hand):
@@ -66,7 +99,8 @@ class BJ_Player(text_games.Player, BJ_Hand):
         elif choice == 'c':
             self.cash_out()
         else:
-            print('err: something went wrong in BJ_Player: gamble_or_leave()')
+            print('err: something went wrong in BJ_Player:')
+            print('gamble_or_leave()')
 
     def hit_or_stand(self):
         choice = None
@@ -83,6 +117,12 @@ class BJ_Dealer(text_games.Player, BJ_Hand):
         super().__init__(name)
         self.card_set = []
 
+    def is_hitting(self):
+        return self.total < 17
+
+    def flip_first_card(self):
+        self.card_set[0].flip()
+
 
 class BJ_Deck(text_games.Deck):
     '''Blackjack session total of cards.'''
@@ -98,13 +138,24 @@ class BJ_Deck(text_games.Deck):
             a += 1
         return a
 
+    def fill_in(self, stacks=1):
+            for stack in range(stacks):
+                for suit in self.SUITS:
+                    for rank in self.RANKS:
+                        self.stack_on(
+                            single_card=BJ_Card(rank=rank, suit=suit)
+                        )
+
     def time_to_shuffle(self):
         if self.amount < 52:
             return True
 
     def restore(self):
         if self.amount < 52:
-            self.transfer_all(given_set=self.used_cards, route=self.card_set)
+            self.transfer_all(
+                given_set=self.used_cards,
+                route=self.card_set
+            )
             self.shuffle()
 
 
@@ -139,8 +190,9 @@ class BJ_Game(object):
             money *= 2
             self.__bet_bank = money
 
-#    def evaluate_round(self):
-        
+    def evaluate_round(self):
+        if self.player.is_busted:
+            print('You are busted.')
 
     def run(self):
         # The game runs while the player has money or wishes to cash out.
@@ -163,15 +215,23 @@ class BJ_Game(object):
 
             # Deal both the player and croupier two initial cards.
             self.deck.hand_out(hands=self.players, per_hand=2)
-            self.dealer.card_set[0].flip()
+            self.dealer.flip_first_card()
             print(f'Dealer:\t\t{self.dealer}')
-            print(f'Your hand:\t{self.player}')
+            print(f'Your hand ({self.player.total}):\t{self.player}')
 
             # TODO: Allow the player to hit or stand.
             player_game = self.player.hit_or_stand()
             if player_game == 'h':
                 self.deck.hand_out(hands=[self.player], per_hand=1)
+                if self.player.is_busted():
+                    
+            # TODO: If player stands, allow for computer move.
+            elif player_game == 's':
+                self.dealer.flip_first_card()
+                while self.dealer.is_hitting():
+                    self.deck.hand_out(hands=[self.dealer], per_hand=1)
             else:
+                # TODO: Check who wins.
                 self.evaluate_round()
 
 def main():
