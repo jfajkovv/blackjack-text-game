@@ -65,7 +65,10 @@ class BJ_Player(text_games.Player, BJ_Hand):
 
         if choice == 'y':
             print('Thank you for your visit. Come again soon.')
+            print(f'*you leave with ${self.money}*')
             self.is_cashing_out = True
+        elif choice == 'n':
+            return choice
 
     def place_a_bet(self):
         bet_choice = None
@@ -102,12 +105,20 @@ class BJ_Player(text_games.Player, BJ_Hand):
             print('err: something went wrong in BJ_Player:')
             print('gamble_or_leave()')
 
-    def hit_or_stand(self):
+    def receive_card(self, card):
+        self.stack_on(single_card=card)
+
+    def hit_or_stand(self, hit):
         choice = None
         while choice not in ('h', 's'):
             print('[H]it or [s]tand.')
             choice = input('\t>>> ').lower()
-        return choice
+
+        if choice == 'h':
+            self.receive_card(card=hit)
+            print(self)
+        elif choice == 's':
+            pass
 
 
 class BJ_Dealer(text_games.Player, BJ_Hand):
@@ -184,11 +195,8 @@ class BJ_Game(object):
         print(f'Bank:\t\t( ${self.player.money} )')
 
     def fetch_money(self, money):
-        if not money:
-            pass
-        else:
-            money *= 2
-            self.__bet_bank = money
+        money *= 2
+        self.__bet_bank = money
 
     def evaluate_round(self):
         if self.player.is_busted:
@@ -207,32 +215,29 @@ class BJ_Game(object):
 
             # Allow the player to cash_out or place a bet.
             player_bet = self.player.gamble_or_leave()
-            if not player_bet:
-                break
+            while player_bet == 'n':
+                player_bet = self.player.gamble_or_leave()
 
             # Fetch money into the bank.
-            self.fetch_money(money=player_bet)
+            if player_bet:
+                self.fetch_money(money=player_bet)
+                print(self.__bet_bank)
 
-            # Deal both the player and croupier two initial cards.
-            self.deck.hand_out(hands=self.players, per_hand=2)
-            self.dealer.flip_first_card()
-            print(f'Dealer:\t\t{self.dealer}')
-            print(f'Your hand ({self.player.total}):\t{self.player}')
-
-            # TODO: Allow the player to hit or stand.
-            player_game = self.player.hit_or_stand()
-            if player_game == 'h':
-                self.deck.hand_out(hands=[self.player], per_hand=1)
-                if self.player.is_busted():
-                    
-            # TODO: If player stands, allow for computer move.
-            elif player_game == 's':
+                # Deal both the player and croupier two initial cards.
+                self.deck.hand_out(hands=self.players, per_hand=2)
                 self.dealer.flip_first_card()
-                while self.dealer.is_hitting():
-                    self.deck.hand_out(hands=[self.dealer], per_hand=1)
-            else:
-                # TODO: Check who wins.
-                self.evaluate_round()
+                print(f'Dealer:\t\t{self.dealer}')
+                print(f'Your hand:\t{self.player}')
+
+                # TODO: Allow the player to hit or stand.
+                self.player.hit_or_stand(
+                    hit=self.deck.hand_out(hands=[self.player], per_hand=1)
+                )
+
+            # Clear all players hands.
+            for player in self.players:
+                player.clear()
+
 
 def main():
     print('blackjack-cli v.0.1 by jfajkovv')
