@@ -1,4 +1,5 @@
 import text_games
+from time import sleep
 
 
 class BJ_Card(text_games.Card):
@@ -18,10 +19,16 @@ class BJ_Card(text_games.Card):
 class BJ_Hand(text_games.Hand):
     '''Collection of cards to do something with.'''
 
+    def __str__(self):
+        re = super(BJ_Hand, self).__str__()
+        if self.total:
+            re += 'in total: (' + str(self.total) + ')'
+        return re
+
     @property
     def total(self):
         for card in self.card_set:
-            if not card.value:
+            if card.value == None:
                 return None
 
         t = 0
@@ -45,9 +52,9 @@ class BJ_Hand(text_games.Hand):
 class BJ_Player(text_games.Player, BJ_Hand):
     '''Blackjack game player representation.'''
 
-    MONEY = 1000
+    START_MONEY = 1000
 
-    def __init__(self, name, money=MONEY):
+    def __init__(self, name, money=START_MONEY):
         super().__init__(name)
         self.card_set = []
         self.money = money
@@ -93,8 +100,7 @@ class BJ_Player(text_games.Player, BJ_Hand):
     def gamble_or_leave(self):
         choice = None
         while choice not in ('p', 'c'):
-            print('[P]lace a bet or [c]ash out.')
-            choice = input('\t>>> ').lower()
+            choice = input('[P]lace a bet or [c]ash out.').lower()
 
         if choice == 'p':
             result = self.place_a_bet()
@@ -105,20 +111,12 @@ class BJ_Player(text_games.Player, BJ_Hand):
             print('err: something went wrong in BJ_Player:')
             print('gamble_or_leave()')
 
-    def receive_card(self, card):
-        self.stack_on(single_card=card)
-
-    def hit_or_stand(self, hit):
+    def hit_or_stand(self):
         choice = None
         while choice not in ('h', 's'):
-            print('[H]it or [s]tand.')
-            choice = input('\t>>> ').lower()
+            choice = input('[H]it or [s]tand.').lower()
 
-        if choice == 'h':
-            self.receive_card(card=hit)
-            print(self)
-        elif choice == 's':
-            pass
+        return choice
 
 
 class BJ_Dealer(text_games.Player, BJ_Hand):
@@ -179,6 +177,7 @@ class BJ_Game(object):
         self.deck = BJ_Deck()
         self.deck.fill_in(stacks=2)
         self.deck.shuffle()
+        self.used_deck = BJ_Deck()
         self.__round = 1
         self.__bet_bank = 0
 
@@ -187,56 +186,107 @@ class BJ_Game(object):
         in_game = (self.player, self.dealer)
         return in_game
 
+    def display_players(self):
+        print(f'Dealer   >>>   {self.dealer}')
+        print(f'Player   >>>   {self.player}')
+
+    def display_dealer(self):
+        print(f'Dealer   >>>   {self.dealer}')
+
     def display_round(self):
-        print(f'Round no.\t( {self.__round} )')
+        print(f'Round no.   ( {self.__round} )')
+
+    def count_round(self):
         self.__round += 1
 
     def display_account(self):
-        print(f'Bank:\t\t( ${self.player.money} )')
+        print(f'Bank:   ( ${self.player.money} )')
 
     def fetch_money(self, money):
         money *= 2
         self.__bet_bank = money
 
+    def display_bet(self):
+        print(f'Bet:   {self.__bet_bank}')
+
+    def reset_bet(self):
+        self.__bet_bank = 0
+
+    def reward_player(self):
+        self.player.money += self.__bet_bank
+
     def evaluate_round(self):
-        if self.player.is_busted:
-            print('You are busted.')
+        if self.player.is_busted():
+            print('You\'ve got busted. You lose.')
+        elif self.dealer.is_busted():
+            print('Dealer got busted. You win.')
+            self.reward_player()
+        elif self.player.total > self.dealer.total:
+            print('You win.')
+            self.reward_player()
+        elif self.player.total < self.dealer.total:
+            print('Dealer wins.')
+        else:
+            print('A tie - push.')
 
     def run(self):
         # The game runs while the player has money or wishes to cash out.
         while not self.player.is_broke() and not self.player.is_cashing_out:
-            self.display_round()
             self.display_account()
+            print(self.deck.used_cards)
 
             # Inspect if total deck cards are lower than 52,
             # and if so, restore the deck and shuffle it.
-            if self.deck.time_to_shuffle():
-                self.deck.restore()
+#            if self.deck.time_to_shuffle():
+#                self.deck.restore()
 
             # Allow the player to cash_out or place a bet.
-            player_bet = self.player.gamble_or_leave()
+            player_bet = 'n'
             while player_bet == 'n':
                 player_bet = self.player.gamble_or_leave()
 
-            # Fetch money into the bank.
+            # Fetch money into the bank and start round.
             if player_bet:
+                self.display_round()
                 self.fetch_money(money=player_bet)
-                print(self.__bet_bank)
 
                 # Deal both the player and croupier two initial cards.
                 self.deck.hand_out(hands=self.players, per_hand=2)
                 self.dealer.flip_first_card()
-                print(f'Dealer:\t\t{self.dealer}')
-                print(f'Your hand:\t{self.player}')
+                self.display_players()
 
-                # TODO: Allow the player to hit or stand.
-                self.player.hit_or_stand(
-                    hit=self.deck.hand_out(hands=[self.player], per_hand=1)
-                )
+                # Allow the player to hit or stand.
+                while not self.player.is_busted() \
+                          and self.player.hit_or_stand() == 'h':
+                    self.deck.hand_out(hands=[self.player])
+                    self.display_players()
 
-            # Clear all players hands.
-            for player in self.players:
-                player.clear()
+                # Croupier move.
+                self.dealer.flip_first_card()
+                self.display_dealer()
+                if not self.player.is_busted():
+                    while not self.dealer.is_busted() \
+                              and self.dealer.is_hitting():
+                        self.deck.hand_out(hands=[self.dealer])
+                        self.display_dealer()
+                        sleep(1)
+
+                # Evaluate scores.
+                self.display_players()
+                self.evaluate_round()
+
+                # Increment round counter.
+                self.count_round()
+
+                # TODO: Reset bet and clear hands before new round.
+                self.reset_bet()
+                self.display_bet()
+                for player in self.players:
+                    player.transfer_all(
+                        given_set=player.card_set,
+                        route=self.used_deck
+                    )
+                self.display_players()
 
 
 def main():
