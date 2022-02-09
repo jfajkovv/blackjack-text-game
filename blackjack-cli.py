@@ -136,9 +136,9 @@ class BJ_Dealer(text_games.Player, BJ_Hand):
 class BJ_Deck(text_games.Deck):
     '''Blackjack session total of cards.'''
 
-    def __init__(self):
-        super(BJ_Deck, self).__init__()
-        self.used_cards = []
+#    def __init__(self):
+#        super(BJ_Deck, self).__init__()
+#        self.used_cards = []
 
     @property
     def amount(self):
@@ -233,7 +233,7 @@ class BJ_Game(object):
         # The game runs while the player has money or wishes to cash out.
         while not self.player.is_broke() and not self.player.is_cashing_out:
             self.display_account()
-            print(self.deck.used_cards)
+            print(f'used: {self.used_deck}')
 
             # Inspect if total deck cards are lower than 52,
             # and if so, restore the deck and shuffle it.
@@ -272,21 +272,19 @@ class BJ_Game(object):
                         sleep(1)
 
                 # Evaluate scores.
+                print()
                 self.display_players()
                 self.evaluate_round()
 
                 # Increment round counter.
                 self.count_round()
 
-                # TODO: Reset bet and clear hands before new round.
+                # Reset bet, fetch used cards and clear hands before
+                # new round.
                 self.reset_bet()
                 self.display_bet()
                 for player in self.players:
-                    player.transfer_all(
-                        given_set=player.card_set,
-                        route=self.used_deck
-                    )
-                self.display_players()
+                    player.transfer_all(route=self.used_deck)
 
 
 def main():
