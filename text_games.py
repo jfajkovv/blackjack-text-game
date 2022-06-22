@@ -81,7 +81,6 @@ class Hand(object):
     def transfer_all(self, route):
         for card in self.card_set:
             route.stack_on(single_card=card)
-        self.clear()
 
     def clear(self):
         self.card_set = []

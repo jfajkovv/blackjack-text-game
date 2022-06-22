@@ -285,6 +285,7 @@ class BJ_Game(object):
                 self.display_bet()
                 for player in self.players:
                     player.transfer_all(route=self.used_deck)
+                    player.clear()
 
 
 def main():
